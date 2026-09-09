@@ -3,25 +3,35 @@ package com.parkit.parkingsystem.service;
 import com.parkit.parkingsystem.constants.Fare;
 import com.parkit.parkingsystem.model.Ticket;
 
+import java.time.Duration;
+
 public class FareCalculatorService {
 
     public void calculateFare(Ticket ticket, boolean discount) {
-        if ((ticket.getOutTime() == null) || (ticket.getOutTime().before(ticket.getInTime()))) {
-            throw new IllegalArgumentException("Out time provided is incorrect:" + ticket.getOutTime().toString());
+        if ((ticket.getOutTime() == null) || (ticket.getOutTime().isBefore(ticket.getInTime()))) {
+            throw new IllegalArgumentException("Out time provided is incorrect:" + ticket.getOutTime());
         }
-        //duration time in ms
-        long durationInMillis =
-                ticket.getOutTime().getTime() - ticket.getInTime().getTime();
-        //duration time in hours
-        double durationInHours =
-                durationInMillis / (60.0 * 60 * 1000);
+        //total duration
+        Duration duration = Duration.between(ticket.getInTime(), ticket.getOutTime());
 
-        //free duration in parking (30min = 1800 000 ms)
-        final double MAX_FREE_TIME = 1800000.0;
-        if (durationInMillis < MAX_FREE_TIME) {
+        //30 minutes are free
+        final long FREE_MINUTES = 30;
+
+        if (duration.toMinutes() <= FREE_MINUTES) {
             ticket.setPrice(0);
+            return;
         } else {
-            switch (ticket.getParkingSpot().getParkingType()) {
+            //remove the free minutes
+            Duration billableDuration = duration.minusMinutes(FREE_MINUTES);
+
+            //convert remaining duration to hours
+            double durationInHours = billableDuration.toMinutes() / 60.0;
+            if (ticket.getParkingSpot() == null ||
+                    ticket.getParkingSpot().getParkingType() == null) {
+                throw new IllegalArgumentException("Unknown Parking Type");
+            }
+            switch (ticket.getParkingSpot()
+                    .getParkingType()) {
                 case CAR: {
                     ticket.setPrice(durationInHours * Fare.CAR_RATE_PER_HOUR);
                     break;
