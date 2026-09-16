@@ -49,8 +49,4 @@ public class FareCalculatorService {
             ticket.setPrice(ticket.getPrice()*0.95);
         }
     }
-
-        public void calculateFare(Ticket ticket) {
-            calculateFare(ticket, false);
-        }
 }
