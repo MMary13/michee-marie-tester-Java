@@ -17,8 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -95,6 +94,32 @@ class ParkingServiceTest {
         verify(ticketDAO).getTicket("ABCDEF");
         verify(ticketDAO).getNbTicket("ABCDEF");
         verify(ticketDAO).updateTicket(any(Ticket.class));
+    }
+
+    @Test
+    void shouldNotThrowExceptionWhenProcessingIncomingVehicleFails() throws Exception {
+        when(inputReaderUtil.readVehicleRegistrationNumber()).thenReturn("ABCDEF");
+        when(ticketDAO.getNbTicket(anyString())).thenReturn(2);
+        when(inputReaderUtil.readSelection()).thenReturn(1);
+        when(ticketDAO.saveTicket(any(Ticket.class))).thenThrow(RuntimeException.class);
+        when(parkingSpotDAO.getNextAvailableSlot(any(ParkingType.class))).thenReturn(1);
+        when(parkingSpotDAO.updateParking(any(ParkingSpot.class))).thenReturn(true);
+
+        assertDoesNotThrow(() -> parkingService.processIncomingVehicle());
+    }
+
+    @Test
+    void should_not_throw_exception_when_processing_exiting_vehicle_fails() {
+        ParkingSpot parkingSpot = new ParkingSpot(1, ParkingType.CAR, false);
+        Ticket ticket = new Ticket();
+        ticket.setInTime(LocalDateTime.now().minusHours(1));
+        ticket.setParkingSpot(parkingSpot);
+        ticket.setVehicleRegNumber("ABCDEF");
+        when(ticketDAO.getTicket(anyString())).thenThrow(RuntimeException.class);
+        when(ticketDAO.updateTicket(any(Ticket.class))).thenReturn(true);
+        when(parkingSpotDAO.updateParking(any(ParkingSpot.class))).thenReturn(true);
+
+        assertDoesNotThrow(() -> parkingService.processExitingVehicle());
     }
 
     @Test
