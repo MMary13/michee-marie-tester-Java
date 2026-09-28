@@ -48,5 +48,8 @@ public class FareCalculatorService {
         if (discount) {
             ticket.setPrice(ticket.getPrice()*0.95);
         }
+
+        // Round to 2 decimal
+        ticket.setPrice(Math.round(ticket.getPrice() * 100.0) / 100.0);
     }
 }
