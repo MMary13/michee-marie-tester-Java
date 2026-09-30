@@ -9,7 +9,6 @@ import com.parkit.parkingsystem.util.InputReaderUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
 
 public class ParkingService {
@@ -21,23 +20,11 @@ public class ParkingService {
     private InputReaderUtil inputReaderUtil;
     private ParkingSpotDAO parkingSpotDAO;
     private  TicketDAO ticketDAO;
-    private Clock clock;
 
     public ParkingService(InputReaderUtil inputReaderUtil, ParkingSpotDAO parkingSpotDAO, TicketDAO ticketDAO){
         this.inputReaderUtil = inputReaderUtil;
         this.parkingSpotDAO = parkingSpotDAO;
         this.ticketDAO = ticketDAO;
-        this.clock = Clock.systemDefaultZone();
-    }
-
-    public ParkingService(InputReaderUtil inputReaderUtil,
-                          ParkingSpotDAO parkingSpotDAO,
-                          TicketDAO ticketDAO,
-                          Clock clock) {
-        this.inputReaderUtil = inputReaderUtil;
-        this.parkingSpotDAO = parkingSpotDAO;
-        this.ticketDAO = ticketDAO;
-        this.clock = clock;
     }
 
     public void processIncomingVehicle() {
@@ -52,7 +39,7 @@ public class ParkingService {
                 parkingSpot.setAvailable(false);
                 parkingSpotDAO.updateParking(parkingSpot);//allot this parking space and mark it's availability as false
 
-                LocalDateTime inTime = LocalDateTime.now(clock);
+                LocalDateTime inTime = LocalDateTime.now();
                 Ticket ticket = new Ticket();
                 //ID, PARKING_NUMBER, VEHICLE_REG_NUMBER, PRICE, IN_TIME, OUT_TIME)
                 ticket.setParkingSpot(parkingSpot);
@@ -117,7 +104,7 @@ public class ParkingService {
         try{
             String vehicleRegNumber = getVehichleRegNumber();
             Ticket ticket = ticketDAO.getTicket(vehicleRegNumber);
-            LocalDateTime outTime = LocalDateTime.now(clock);
+            LocalDateTime outTime = LocalDateTime.now();
             ticket.setOutTime(outTime);
             int nbTickets = ticketDAO.getNbTicket(vehicleRegNumber);
             boolean discount = nbTickets > 1;

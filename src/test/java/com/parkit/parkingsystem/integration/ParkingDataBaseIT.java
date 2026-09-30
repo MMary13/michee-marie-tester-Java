@@ -14,11 +14,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Clock;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -31,6 +31,7 @@ class ParkingDataBaseIT {
     private static ParkingSpotDAO parkingSpotDAO;
     private static TicketDAO ticketDAO;
     private static DataBasePrepareService dataBasePrepareService;
+    private static final String VEHICLE_REGISTRATION_NUMBER = "ABCDEF";
 
     @Mock
     private static InputReaderUtil inputReaderUtil;
@@ -46,9 +47,9 @@ class ParkingDataBaseIT {
 
     @BeforeEach
     void setUpPerTest() throws Exception {
-        when(inputReaderUtil.readVehicleRegistrationNumber()).thenReturn("ABCDEF");
+        when(inputReaderUtil.readVehicleRegistrationNumber()).thenReturn(VEHICLE_REGISTRATION_NUMBER);
         dataBasePrepareService.clearDataBaseEntries();
-        assertEquals(0, ticketDAO.getNbTicket("ABCDEF"));
+        assertEquals(0, ticketDAO.getNbTicket(VEHICLE_REGISTRATION_NUMBER));
     }
 
 
@@ -60,11 +61,11 @@ class ParkingDataBaseIT {
         parkingService.processIncomingVehicle();
 
         // get ticket from database
-        Ticket ticket = ticketDAO.getTicket("ABCDEF");
+        Ticket ticket = ticketDAO.getTicket(VEHICLE_REGISTRATION_NUMBER);
 
         // do validations
         assertNotNull(ticket);
-        assertEquals("ABCDEF", ticket.getVehicleRegNumber());
+        assertEquals(VEHICLE_REGISTRATION_NUMBER, ticket.getVehicleRegNumber());
         assertEquals("CAR", ticket.getParkingSpot().getParkingType().toString());
     }
 
@@ -72,63 +73,63 @@ class ParkingDataBaseIT {
     @Test
     void testParkingLotExit() {
         LocalDateTime outTime = LocalDateTime.of(2026, 9, 28, 20, 0, 0);
-        LocalDateTime inTime = outTime.minusHours(2);
+        LocalDateTime inTime = LocalDateTime.of(2026, 9, 28, 18, 0, 0);
 
-        Clock fixedClock = Clock.fixed(
-                outTime.atZone(ZoneId.systemDefault()).toInstant(),
-                ZoneId.systemDefault()
-        );
-
-        ParkingService parkingService = new ParkingService(inputReaderUtil, parkingSpotDAO, ticketDAO, fixedClock);
+        ParkingService parkingService = new ParkingService(inputReaderUtil, parkingSpotDAO, ticketDAO);
         // given
         Ticket newTicket = new Ticket();
-        newTicket.setVehicleRegNumber("ABCDEF");
+        newTicket.setVehicleRegNumber(VEHICLE_REGISTRATION_NUMBER);
         newTicket.setParkingSpot(new ParkingSpot(2, ParkingType.CAR, true));
         newTicket.setInTime(inTime);
         ticketDAO.saveTicket(newTicket);
         // when
-        parkingService.processExitingVehicle();
-        // then
-        Ticket ticket = ticketDAO.getTicket("ABCDEF");
-        //do validation
-        assertNotNull(ticket);
-        assertEquals("ABCDEF", ticket.getVehicleRegNumber());
-        assertEquals(2.25, ticket.getPrice());
+        try (MockedStatic<LocalDateTime> mockedLocalDateTime =
+                     Mockito.mockStatic(LocalDateTime.class,
+                             Mockito.CALLS_REAL_METHODS)) {
+            mockedLocalDateTime.when(LocalDateTime::now).thenReturn(outTime);
+            parkingService.processExitingVehicle();
+            // then
+            Ticket ticket = ticketDAO.getTicket(VEHICLE_REGISTRATION_NUMBER);
+            //do validation
+            assertNotNull(ticket);
+            assertEquals(VEHICLE_REGISTRATION_NUMBER, ticket.getVehicleRegNumber());
+            assertEquals(2.25, ticket.getPrice());
+        }
     }
 
     @Test
     void testParkingLotExitRecurringUser() {
         LocalDateTime outTime = LocalDateTime.of(2026, 9, 28, 20, 0, 0);
-        LocalDateTime inTime = outTime.minusHours(2);
+        LocalDateTime inTime = LocalDateTime.of(2026, 9, 28, 18, 0, 0);
 
-        Clock fixedClock = Clock.fixed(
-                outTime.atZone(ZoneId.systemDefault()).toInstant(),
-                ZoneId.systemDefault()
-        );
-
-        ParkingService parkingService = new ParkingService(inputReaderUtil, parkingSpotDAO, ticketDAO, fixedClock);
+        ParkingService parkingService = new ParkingService(inputReaderUtil, parkingSpotDAO, ticketDAO);
         // given previous ticket
         Ticket oldTicket = new Ticket();
-        ticketDAO.getTicket("ABCDEF");
-        oldTicket.setVehicleRegNumber("ABCDEF");
+        ticketDAO.getTicket(VEHICLE_REGISTRATION_NUMBER);
+        oldTicket.setVehicleRegNumber(VEHICLE_REGISTRATION_NUMBER);
         oldTicket.setParkingSpot(new ParkingSpot(2, ParkingType.CAR, true));
         oldTicket.setOutTime(LocalDateTime.of(2026, 9, 23, 12, 0));
         oldTicket.setInTime(oldTicket.getOutTime().minusHours(2));
         ticketDAO.saveTicket(oldTicket);
         // when
         Ticket newTicket = new Ticket();
-        newTicket.setVehicleRegNumber("ABCDEF");
+        newTicket.setVehicleRegNumber(VEHICLE_REGISTRATION_NUMBER);
         newTicket.setParkingSpot(new ParkingSpot(2, ParkingType.CAR, true));
         newTicket.setInTime(inTime);
         ticketDAO.saveTicket(newTicket);
-        parkingService.processExitingVehicle();
-        // then
-        Ticket ticket = ticketDAO.getTicket("ABCDEF");
+        try (MockedStatic<LocalDateTime> mockedLocalDateTime =
+                     Mockito.mockStatic(LocalDateTime.class,
+                             Mockito.CALLS_REAL_METHODS)) {
+            mockedLocalDateTime.when(LocalDateTime::now).thenReturn(outTime);
+            parkingService.processExitingVehicle();
+            // then
+            Ticket ticket = ticketDAO.getTicket(VEHICLE_REGISTRATION_NUMBER);
 
-        //do validation
-        assertNotNull(ticket);
-        assertEquals("ABCDEF", ticket.getVehicleRegNumber());
-        assertEquals(2.14, ticket.getPrice());
+            //do validation
+            assertNotNull(ticket);
+            assertEquals(VEHICLE_REGISTRATION_NUMBER, ticket.getVehicleRegNumber());
+            assertEquals(2.14, ticket.getPrice());
+        }
     }
 
 }
